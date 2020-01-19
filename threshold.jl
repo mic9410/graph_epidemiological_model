@@ -69,29 +69,39 @@ end
 
 #####################
 
-
-function is_active(graph)
+## TODO - in is_active function add recovering from illnes.
+function is_active(graph, infection_duration)
     final_event = 0 #zmienna pomocnicza sterujaca symulacja. Gdy ma wartosc 0 to wiemy, ze w symulacji nic juz sie nie zmienia i nie ma koniecznosci jej dalej kontynuowac
     for i = 1:nv(graph)
-        if get_prop(graph ,i, :infected) == 0
+        if get_prop(graph ,i, :infected) == 0 & get_prop(graph ,i, :immune) == 0
            external_motivation =  - (1 - sum(get_prop(graph ,j, :infected)  for j in neighbors(graph,i)) / length(neighbors(graph,i))) #wyliczamy zewnetrzna motywacje do dzialania. Przyjmuje ona wartosc od -1 do 0 i rosnie gdy sasiedzi agenta staja sie aktywni
            if get_prop(graph ,i, :exposed_to_infection) + external_motivation > 0 #sprawdzamy czy suma motywacji agenta jest wieksza od 0
                 set_prop!(graph ,i,:infected, 1) #jesli tak to staje sie on aktywny
-                final_event = 1 #a symulacja trwa dalej
+				set_prop!(graph ,i,:inf_days, 1) #pierwszy dzień infekcji
+				final_event = 1 #a symulacja trwa dalej
             end
-        end
+		elseif get_prop(graph ,i, :infected) == 1 & get_prop(graph ,i, :inf_days) < infection_duration
+			set_prop!(graph ,i,:inf_days, get_prop(graph ,i,:inf_days) + 1)		#Osoba w trakcie choroby
+			final_event = 1 #a symulacja trwa dalej
+
+		elseif get_prop(graph ,i, :infected) == 1 & get_prop(graph ,i, :inf_days) == infection_duration
+			set_prop!(graph ,i,:inf_days, 0) #infekcja się kończy
+			set_prop!(graph ,i,:infected, 0) #pacjent zdrowieje...
+			set_prop!(graph ,i,:immune, 1) #... i nabywa odporność
+			final_event = 1 #a symulacja trwa dalej
+		end
     end
-    return final_event
+    return final_event #Wszyscy zdrowi lub odporni
 end
 
 ############
 # funkcja sterujaca symulacja
-function run_simulation(n_nodes, n_edges, rew_prob, dist, per_infected, infection_duration, per_vaccinated, max_iter = 1, plotting = true)
+function run_simulation(n_nodes, n_edges, rew_prob, dist, per_infected, infection_duration, per_vaccinated, max_iter = 5, plotting = true)
 	network = initialize(n_nodes, n_edges, rew_prob, dist, per_infected) #tworzymy siec
 	active_beginning = sum(get_prop(network ,j, :infected)  for j = 1: nv(network)) # bierzemy sumę aktywnych agentów
     for i = 1:max_iter #zaczynamy symulacje
-        done = is_active(network)
-        if done == 1 #jezeli zmienna final_event jest rowna 0 oznacza to, ze w symulacji nic juz sie nie dzieje - nie ma sensu jej kontynuowac
+        done = is_active(network, infection_duration)
+        if done == 0 #jezeli zmienna final_event jest rowna 0 oznacza to, ze w symulacji nic juz sie nie dzieje - nie ma sensu jej kontynuowac
 			break
         end
     end
