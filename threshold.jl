@@ -96,7 +96,7 @@ end
 
 ############
 # funkcja sterujaca symulacja
-function run_simulation(n_nodes, n_edges, rew_prob, dist, per_infected, infection_duration, per_vaccinated, max_iter = 5, plotting = true)
+function run_simulation(n_nodes, n_edges, rew_prob, dist, per_infected, infection_duration, per_vaccinated, max_iter = 1000, plotting = true)
 	network = initialize(n_nodes, n_edges, rew_prob, dist, per_infected) #tworzymy siec
 	active_beginning = sum(get_prop(network ,j, :infected)  for j = 1: nv(network)) # bierzemy sumę aktywnych agentów
     for i = 1:max_iter #zaczynamy symulacje
