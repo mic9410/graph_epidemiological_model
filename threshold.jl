@@ -17,7 +17,7 @@ dist = Normal(0.5,0.25); #mi - średnia, sigma - odchylenie standardowe, a więc
 n_nodes = 10;
 n_edges = 7;
 rew_prob = 0.15; # prawdopodobieństwo zarażenia
-per_volunteers = 0.2; # Liczba wolontariuszy (zarażonych) na osobę
+per_infected = 0.2; # Liczba wolontariuszy (zarażonych) na osobę
 infection_duration = 10; # Czas trwania infekcji
 per_vaccinated = 0.2; # Liczba osób zaszczepionych
 ########################
@@ -36,18 +36,35 @@ end
 ######################
 # funkcja inicjujaca symulacje, tworzaca graf i poczatkowo aktywnych agentow
 
-function initialize(n_nodes, n_edges, rew_prob, dist, per_volunteers)
+function initialize(n_nodes, n_edges, rew_prob, dist, per_infected)
 	network = generate_social_network(n_nodes, n_edges, rew_prob, dist) #wywolujemy funkcje tworzaca graf
 	for i = 1:n_nodes #sprawdzamy czy nie istnieja agenci aktywni od poczatku
 		if get_prop(network ,i, :exposed_to_infection)  >= 1 # funkcja get_prop wyciaga odpowedni argument z wierzcholka
-            set_prop!(network ,i, :active, 1) #set_prop zmienia lub dodaje nowy parametr do wierzcholka
+			set_prop!(network ,i, :active, 1) #set_prop zmienia lub dodaje nowy parametr do wierzcholka
         end
     end
-    volunteers = rand(1:n_nodes,Int(round(per_volunteers*n_nodes))) #losowo wybieramy agentow, ktorzy beda aktywni od poczatku
-    for j in volunteers
+    infected = rand(1:n_nodes,Int(round(per_infected*n_nodes))) #losowo wybieramy agentow, ktorzy beda aktywni od poczatku
+    for j in infected
         set_prop!(network ,j, :active, 1) # Dla wylosowanych agentów ustawiamy parametr active na true
-    end
-    return network # Zwracamy zainicjalizowaną siec
+	end
+
+	immune_candidates = Int[]
+	for j in 1:n_nodes
+		if get_prop(network ,j, :active) == 0	# osoba nie może być jednocześnie chora i odporna, dlatego należy odfiltrować osoby chore
+			push!(immune_candidates, j) # numery wierzchołków - kandydatów do szczepienia zapisujemy w tabeli immune_candidates
+		end
+	end
+
+	immuned = rand(1:length(immune_candidates),Int(round(per_vaccinated*length(immune_candidates)))) #losowo wybieramy agentow, ktorzy beda aktywni od poczatku
+	# Spośród kandydatów do szczepienia wybieramy zbiór osób które zostaną zaszczepione
+	for j in 1:length(immuned)
+		set_prop!(network ,immuned[j], :immune, 1)
+	end
+
+	for j in 1:n_nodes
+		println(j, " - immuned: ", get_prop(network ,j, :immune),", infected: ", get_prop(network ,j, :active))
+	end
+	return network # Zwracamy zainicjalizowaną siec
 end
 
 
@@ -70,8 +87,8 @@ end
 
 ############
 # funkcja sterujaca symulacja
-function run_simulation(n_nodes, n_edges, rew_prob, dist, per_volunteers, infection_duration, per_vaccinated, max_iter = 1, plotting = true)
-	network = initialize(n_nodes, n_edges, rew_prob, dist, per_volunteers) #tworzymy siec
+function run_simulation(n_nodes, n_edges, rew_prob, dist, per_infected, infection_duration, per_vaccinated, max_iter = 1, plotting = true)
+	network = initialize(n_nodes, n_edges, rew_prob, dist, per_infected) #tworzymy siec
 	active_beginning = sum(get_prop(network ,j, :active)  for j = 1: nv(network)) # bierzemy sumę aktywnych agentów
     for i = 1:max_iter #zaczynamy symulacje
         done = is_active(network)
@@ -91,4 +108,4 @@ function run_simulation(n_nodes, n_edges, rew_prob, dist, per_volunteers, infect
 	return active_beginning, active_end
 end
 
-run_simulation(n_nodes, n_edges, rew_prob, dist, per_volunteers, infection_duration, per_vaccinated)
+run_simulation(n_nodes, n_edges, rew_prob, dist, per_infected, infection_duration, per_vaccinated)
