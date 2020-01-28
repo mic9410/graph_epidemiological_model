@@ -1,3 +1,4 @@
+## Michał Foryt, Patrycja Weiss
 import Pkg;
 Pkg.build("CodecZlib")
 Pkg.add("Distributions")
